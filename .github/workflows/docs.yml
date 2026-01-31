@@ -3,8 +3,8 @@ name: Build & Deploy Docs
 on:
   push:
     branches: 
-        - "**"  # build on any branch
-  pull_request: # build on PRs too
+        - "master"  # build on push only for master 
+  pull_request:     # build on PRs too
   workflow_dispatch:
 
 permissions:
