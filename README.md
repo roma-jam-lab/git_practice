@@ -2,7 +2,7 @@
 
 Everyone should have something like this, right?
 
-📚 **Documentation:** [https://<username>.github.io/<repo>/](https://roma-jam.github.io/git_practice/)
+📚 **Documentation:** [Github Pages](https://roma-jam.github.io/git_practice/)
 
 ## List of achievements
 
