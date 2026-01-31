@@ -1,17 +1,20 @@
-.. sphinx_practice documentation master file, created by
-   sphinx-quickstart on Sat Jan 31 00:02:11 2026.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+Documentation
+=============
 
-sphinx_practice documentation
-=============================
+This is the demo documentation.
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+Quick links
+-----------
 
+* :doc:`Getting started <getting_started>`
+* :doc:`Usage <usage>`
+* `README on GitHub <https://github.com/roma-jam/git_practice#readme>`_
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+   :hidden:
 
+   getting_started
+   usage
+   changelog
