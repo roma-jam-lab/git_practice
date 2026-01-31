@@ -10,4 +10,5 @@ Everyone should have something like this, right?
 4. Set up ISSUE TEMPLATES
 5. Set up PULL REQUEST template
 6. Created a folder for refresh C data structures
+7. Sphinx docs build in workflow and deploy to Pages
 
