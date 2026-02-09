@@ -1,0 +1,21 @@
+name: self-hosted
+
+on:   
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  poke:
+    runs-on: [self-hosted, usb_device]
+    container:
+      image: python:3.11-bookworm
+      options: --privileged --device-cgroup-rule="c 188:* rmw" --device-cgroup-rule="c 166:* rmw"
+    steps:
+      - name: ⚙️ Install System tools
+        run: |
+          apt update
+          apt install -y usbutils
+      - name: ⚙️ Install Espressif Python packages
+        env:
+          PIP_EXTRA_INDEX_URL: "https://dl.espressif.com/pypi/"
+        run: pip install --only-binary cryptography pytest-embedded pytest-embedded-serial-esp pytest-embedded-idf pyserial pyusb
