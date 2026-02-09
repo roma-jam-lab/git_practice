@@ -1,0 +1,13 @@
+name: self-hosted
+
+on: 
+  pull_request:     # build on PRs
+
+jobs:
+  poke:
+    runs-on: [self-hosted, usb_device]
+    steps:
+      - run: |
+          whoami
+          uname -a
+          id
