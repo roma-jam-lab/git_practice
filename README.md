@@ -13,4 +13,5 @@ Everyone should have something like this, right?
 5. Set up PULL REQUEST template
 6. Created a folder for refresh C data structures
 7. Sphinx docs build in workflow and deploy to Pages
+8. Added a self-hosted runner for the HIL testing purpose
 
