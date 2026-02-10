@@ -1,11 +1,28 @@
-name: self-hosted
+name: Build & Run
 
 on:   
   pull_request:
     types: [opened, reopened, synchronize]
 
 jobs:
+  build:
+    name: "Build" 
+    strategy:
+      fail-fast: false
+      matrix:
+        idf_ver: ["release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4", "release-v5.5", "release-v6.0", "latest"]
+    runs-on: [ubuntu-latest]
+    container: espressif/idf:${{ matrix.idf_ver }}
+    steps:
+      - name: Export venv
+        shell: bash
+        run: |
+          . ${IDF_PATH}/export.sh
+
   poke:
+    name: "Run" 
+    if: ${{ github.repository_owner == 'roma-jam-lab' }}
+    needs: build
     runs-on: [self-hosted, usb_device]
     container:
       image: python:3.11-bookworm
