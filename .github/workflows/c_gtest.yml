@@ -1,0 +1,37 @@
+name: C Folder - Google Tests
+
+on:
+  pull_request:
+    paths:
+      - "c/**"
+      - ".github/workflows/**"
+    types: [opened, reopened, synchronize, ready_for_review]
+  push:
+    branches: ["master"]
+    paths:
+      - "c/**"
+      - ".github/workflows/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ⚙️ Install build tools + GTest
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ gcc libgtest-dev
+          cd /usr/src/gtest
+          sudo cmake -B build -S .
+          sudo cmake --build build
+          sudo cp build/lib/*.a /usr/lib/
+
+      - name: 📝 Configure
+        run: cmake -S c -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: 🔨 Build
+        run: cmake --build build
+
+      - name: 🔎 Test
+        run: ctest --test-dir build --output-on-failure
