@@ -84,10 +84,11 @@ int strbuf_append_cstr(strbuf_t* sb, const char* suffix)
     size_t vacant_len = sb->capacity - sb->size - 1;
 
     if (suffix_len == 0) {
-        return ERR;
+        /* suffix is '\0' */
+        return OK;
     }
 
-    if (suffix_len <= vacant_len) {
+    if (sb->data && suffix_len <= vacant_len) {
         /* we have place in memory - store and return */
         memcpy(&sb->data[sb->size], suffix, suffix_len);
         sb->size += suffix_len;
@@ -96,38 +97,50 @@ int strbuf_append_cstr(strbuf_t* sb, const char* suffix)
         return OK;
     }
 
-    /* need to grow */
+    /* need to grow or lazy alloc */
     /* TODO: watchout the sb->capacity overflow */
     size_t new_capacity = sb->capacity + suffix_len;
 
     char *old_mem_chunk = sb->data;
-    char *new_mem_chunk = calloc(sb->capacity, sizeof(char));
+    char *new_mem_chunk = calloc(new_capacity, sizeof(char));
 
     if (new_mem_chunk == NULL) {
         return ERR;
     }
 
-    memcpy(new_mem_chunk, old_mem_chunk, sb->size);
+    if (sb->size == 0 && old_mem_chunk == NULL) {
+        /* lazy alloc */
+        new_capacity++;
+    } else {
+        memcpy(new_mem_chunk, old_mem_chunk, sb->size);
+    }
     memcpy(new_mem_chunk + sb->size, suffix, suffix_len);
     sb->data = new_mem_chunk;
     sb->size += suffix_len;
     sb->capacity = new_capacity;
     /* termination */
     sb->data[sb->size] = '\0';
-    free(old_mem_chunk);
+
+    if (old_mem_chunk != NULL) {
+        free(old_mem_chunk);
+    }
     return OK;
 }
 
 int strbuf_append_n(strbuf_t* sb, const char* s, size_t n)
 {
-    if (sb == NULL || s == NULL || n == 0) {
+    if (sb == NULL || (s == NULL && n > 0)) {
         return ERR;
     }
 
     size_t suffix_len = n;
     size_t vacant_len = sb->capacity - sb->size - 1;
 
-    if (suffix_len <= vacant_len) {
+    if (suffix_len == 0) {
+        return OK;
+    }
+
+    if (sb->data && suffix_len <= vacant_len) {
         /* we have place in memory - store and return */
         memcpy(&sb->data[sb->size], s, suffix_len);
         sb->size += suffix_len;
@@ -136,25 +149,33 @@ int strbuf_append_n(strbuf_t* sb, const char* s, size_t n)
         return OK;
     }
 
-    /* need to grow */
+    /* need to grow or lazy alloc */
     /* TODO: watchout the sb->capacity overflow */
     size_t new_capacity = sb->capacity + suffix_len;
 
     char *old_mem_chunk = sb->data;
-    char *new_mem_chunk = calloc(sb->capacity, sizeof(char));
+    char *new_mem_chunk = calloc(new_capacity, sizeof(char));
 
     if (new_mem_chunk == NULL) {
         return ERR;
     }
 
-    memcpy(new_mem_chunk, old_mem_chunk, sb->size);
+    if (sb->size == 0 && old_mem_chunk == NULL) {
+        /* lazy alloc */
+        new_capacity++;
+    } else {
+        memcpy(new_mem_chunk, old_mem_chunk, sb->size);
+    }
     memcpy(new_mem_chunk + sb->size, s, suffix_len);
     sb->data = new_mem_chunk;
     sb->size += suffix_len;
     sb->capacity = new_capacity;
     /* termination */
     sb->data[sb->size] = '\0';
-    free(old_mem_chunk);
+
+    if (old_mem_chunk != NULL) {
+        free(old_mem_chunk);
+    }
     return OK;
 }
 
@@ -165,5 +186,9 @@ void strbuf_clear(strbuf_t* sb)
     }
 
     sb->size = 0;
-    sb->data[sb->size] = '\0';
+
+    if (sb->data) {
+        /* not lazy alloc */
+        sb->data[sb->size] = '\0';
+    }
 }
