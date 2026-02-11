@@ -18,7 +18,6 @@ add_executable(dyn_array_tests
     tests/dyn_array_test.cpp
 )
 
-
 target_link_libraries(dyn_array_tests
     dyn_array
     gtest
