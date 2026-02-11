@@ -6,6 +6,7 @@ on:
 
 jobs:
   poke:
+    if: ${{ !startsWith(github.head_ref, 'c_language/') }} 
     runs-on: [self-hosted, usb_device]
     container:
       image: python:3.11-bookworm
