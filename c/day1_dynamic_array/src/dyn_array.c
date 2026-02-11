@@ -93,8 +93,8 @@ int dyn_array_pop_back(dyn_array_t* arr)
     int ret;
     LOCK();
     if (arr->data && (arr->size > 0)) {
+        arr->size--;
         arr->data[arr->size] = 0;
-        arr->size -= 1;
         ret = OK;
     } else {
         ret = ERR;
@@ -106,7 +106,7 @@ int dyn_array_pop_back(dyn_array_t* arr)
 
 int dyn_array_get(const dyn_array_t* arr, size_t index, int* out_value)
 {
-    if (arr == NULL) {
+    if (arr == NULL || out_value == NULL) {
         return ERR;
     }
 
@@ -114,7 +114,7 @@ int dyn_array_get(const dyn_array_t* arr, size_t index, int* out_value)
     int value = 0;
 
     LOCK();
-    if (index <= arr->size) {
+    if (index < arr->size) {
         value = arr->data[index];
         ret = OK;
     } else {
@@ -156,7 +156,7 @@ int dyn_array_resize(dyn_array_t* arr, size_t new_size)
 
         LOCK();
         old_mem_chunk = arr->data;
-        memcpy(mem_chunk, old_mem_chunk, arr->size);
+        memcpy(mem_chunk, old_mem_chunk, arr->size * sizeof(int));
         arr->size += new_size;
         arr->data = mem_chunk;
         arr->capacity = total_size;
