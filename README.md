@@ -2,7 +2,7 @@
 
 Everyone should have something like this, right?
 
-📚 [**Documentation**](https://roma-jam.github.io/git_practice/)
+📚 [**Documentation**](https://roma-jam-lab.github.io/git_practice/)
 
 ## List of achievements
 
