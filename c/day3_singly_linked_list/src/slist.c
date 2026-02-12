@@ -120,8 +120,13 @@ int slist_pop_front(slist_t* list, int* out_value)
 
 int slist_remove_first(slist_t* list, int value)
 {
-    if (list == NULL || list->size == 0) {
+    if (list == NULL) {
         return ERR;
+    }
+
+    if (list->size == 0) {
+        /* no elements in the list */
+        return OK;
     }
 
     slist_node_t *curr_node = list->head;
