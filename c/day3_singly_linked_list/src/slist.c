@@ -36,11 +36,16 @@ void slist_free(slist_t* list)
     slist_node_t *curr_node = list->head;
     slist_node_t *tmp;
 
-    while(curr_node) {
+    while(curr_node && list->size) {
         tmp = curr_node;
         curr_node = tmp->next;
         free(tmp);
+        list->size--;
     }
+    /* TODO: assert list->size == 0 */
+
+    list->head = NULL;
+    list->tail = NULL;
 }
 
 int slist_push_front(slist_t* list, int value)

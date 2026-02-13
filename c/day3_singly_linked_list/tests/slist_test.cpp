@@ -40,6 +40,12 @@ static void expect_invariants(const slist_t& list) {
     }
 }
 
+static void expect_empty_state(const slist_t& list) {
+    EXPECT_EQ(list.size, 0u);
+    EXPECT_EQ(list.head, nullptr);
+    EXPECT_EQ(list.tail, nullptr);
+}
+
 TEST(SListTest, InitAndFreeAreIdempotent) {
     slist_t list;
     EXPECT_EQ(slist_init(&list), 0);
@@ -445,4 +451,181 @@ TEST(SListExtraTest, RandomizedOpsAgainstVectorModel) {
     }
 
     slist_free(&list);
+}
+
+TEST(SListImplTest, FreeResetsStateToEmpty) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+
+    for (int i = 0; i < 10; ++i) {
+        ASSERT_EQ(slist_push_back(&list, i), 0);
+    }
+    ASSERT_EQ(list.size, 10u);
+    ASSERT_NE(list.head, nullptr);
+    ASSERT_NE(list.tail, nullptr);
+
+    slist_free(&list);
+
+    // Must be reset to a valid empty state
+    expect_empty_state(list);
+
+    // Second free must still be safe
+    slist_free(&list);
+    expect_empty_state(list);
+}
+
+TEST(SListImplTest, FreeThenReuseWithoutReinitWorks) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+
+    ASSERT_EQ(slist_push_back(&list, 1), 0);
+    ASSERT_EQ(slist_push_back(&list, 2), 0);
+
+    slist_free(&list);
+
+    // Reuse the same list struct after free (without init)
+    ASSERT_EQ(slist_push_front(&list, 10), 0);
+    ASSERT_EQ(slist_push_back(&list, 20), 0);
+
+    EXPECT_EQ(to_vec(&list), (std::vector<int>{10,20}));
+
+    slist_free(&list);
+    expect_empty_state(list);
+}
+
+TEST(SListImplTest, RemoveFirstOnEmptyReturnsNotFound) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+
+    // Not found on empty
+    EXPECT_EQ(slist_remove_first(&list, 123), 0);
+    expect_empty_state(list);
+
+    slist_free(&list);
+}
+
+TEST(SListImplTest, RemoveFirstNotFoundDoesNotChangeList) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+
+    ASSERT_EQ(slist_push_back(&list, 1), 0);
+    ASSERT_EQ(slist_push_back(&list, 2), 0);
+    ASSERT_EQ(slist_push_back(&list, 3), 0);
+
+    const auto before = to_vec(&list);
+    const size_t size_before = list.size;
+    const auto head_before = list.head;
+    const auto tail_before = list.tail;
+
+    EXPECT_EQ(slist_remove_first(&list, 999), 0);
+
+    EXPECT_EQ(list.size, size_before);
+    EXPECT_EQ(list.head, head_before);
+    EXPECT_EQ(list.tail, tail_before);
+    EXPECT_EQ(to_vec(&list), before);
+
+    slist_free(&list);
+}
+
+TEST(SListImplTest, PopFrontAfterFreeFailsCleanly) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+
+    ASSERT_EQ(slist_push_back(&list, 1), 0);
+    slist_free(&list);
+
+    int v = 0;
+    EXPECT_EQ(slist_pop_front(&list, &v), -1);
+    expect_empty_state(list);
+
+    slist_free(&list);
+}
+
+TEST(SListImplTest, SizeMatchesTraversalAfterRemoveHeadAndTail) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+
+    for (int i = 0; i < 5; ++i) {
+        ASSERT_EQ(slist_push_back(&list, i), 0);
+    }
+    ASSERT_EQ(to_vec(&list), (std::vector<int>{0,1,2,3,4}));
+    ASSERT_EQ(list.size, 5u);
+
+    ASSERT_EQ(slist_remove_first(&list, 0), 1); // remove head
+    ASSERT_EQ(to_vec(&list), (std::vector<int>{1,2,3,4}));
+
+    ASSERT_EQ(slist_remove_first(&list, 4), 1); // remove tail
+    ASSERT_EQ(to_vec(&list), (std::vector<int>{1,2,3}));
+
+    // size must equal traversal length
+    EXPECT_EQ(list.size, to_vec(&list).size());
+
+    slist_free(&list);
+}
+
+TEST(SListImplTest, TailNextIsAlwaysNullAfterOperations) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+
+    ASSERT_EQ(slist_push_back(&list, 1), 0);
+    ASSERT_NE(list.tail, nullptr);
+    EXPECT_EQ(list.tail->next, nullptr);
+
+    ASSERT_EQ(slist_push_back(&list, 2), 0);
+    ASSERT_NE(list.tail, nullptr);
+    EXPECT_EQ(list.tail->next, nullptr);
+
+    ASSERT_EQ(slist_push_front(&list, 0), 0);
+    ASSERT_NE(list.tail, nullptr);
+    EXPECT_EQ(list.tail->next, nullptr);
+
+    ASSERT_EQ(slist_remove_first(&list, 2), 1);
+    if (list.tail) EXPECT_EQ(list.tail->next, nullptr);
+
+    int v = -1;
+    ASSERT_EQ(slist_pop_front(&list, &v), 0);
+    if (list.tail) EXPECT_EQ(list.tail->next, nullptr);
+
+    slist_free(&list);
+}
+
+TEST(SListImplTest, RemoveFirstOnSingleElementNotFoundKeepsSingle) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+
+    ASSERT_EQ(slist_push_back(&list, 7), 0);
+    ASSERT_EQ(list.size, 1u);
+    ASSERT_NE(list.head, nullptr);
+    ASSERT_NE(list.tail, nullptr);
+    ASSERT_EQ(list.head, list.tail);
+
+    EXPECT_EQ(slist_remove_first(&list, 8), 0);
+
+    EXPECT_EQ(list.size, 1u);
+    ASSERT_NE(list.head, nullptr);
+    ASSERT_NE(list.tail, nullptr);
+    EXPECT_EQ(list.head, list.tail);
+    EXPECT_EQ(to_vec(&list), (std::vector<int>{7}));
+
+    slist_free(&list);
+}
+
+TEST(SListImplTest, FreeThenInitThenPushWorks) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+
+    ASSERT_EQ(slist_push_back(&list, 1), 0);
+    ASSERT_EQ(slist_push_back(&list, 2), 0);
+
+    slist_free(&list);
+    ASSERT_EQ(slist_init(&list), 0);
+
+    ASSERT_EQ(slist_push_back(&list, 3), 0);
+    ASSERT_EQ(slist_push_front(&list, 2), 0);
+    ASSERT_EQ(slist_push_back(&list, 4), 0);
+
+    EXPECT_EQ(to_vec(&list), (std::vector<int>{2,3,4}));
+
+    slist_free(&list);
+    expect_empty_state(list);
 }
