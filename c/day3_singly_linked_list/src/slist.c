@@ -3,6 +3,7 @@
 
 #define OK      (0)
 #define REMOVED (1)
+#define CYCLE_EXISTS (1)
 #define ERR     (-1)
 
 static slist_node_t* node_create(int value) {
@@ -176,20 +177,101 @@ int slist_remove_first(slist_t* list, int value)
     return OK;
 }
 
-int slist_reverse(slist_t* list) {
-    /* TODO */
-    (void)list;
-    return -1;
+int slist_reverse(slist_t* list)
+{
+    if (list == NULL) {
+        return ERR;
+    }
+
+    slist_node_t *prev = NULL;
+    slist_node_t *next = NULL;
+    slist_node_t *curr = list->head;
+
+    list->tail = list->head;
+
+    /* swap */
+    while (curr) {
+        next = curr->next;
+        curr->next = prev;
+        prev = curr;
+        curr = next;
+    }
+
+    list->head = prev;
+
+    return OK;
 }
 
-int slist_find_middle(const slist_t* list, int* out_value) {
-    /* TODO */
-    (void)list; (void)out_value;
-    return -1;
+int slist_find_middle(const slist_t* list, int* out_value)
+{
+    if (list == NULL || out_value == NULL) {
+        return ERR;
+    }
+
+    if (list->size == 0) {
+        /* empty list */
+        return ERR;
+    }
+
+    if (list->size == 1) {
+        /* one element only */
+        *out_value = list->head->value;
+        return OK;
+    }
+
+    slist_node_t *slow = list->head;
+    slist_node_t *fast = list->head->next;
+    /* TODO: watchout the cycle */
+
+    while (fast && fast->next) {
+        slow = slow->next;
+        fast = fast->next->next;
+    }
+
+    *out_value = slow->value;
+    return OK;
 }
 
-int slist_has_cycle(const slist_t* list) {
-    /* TODO */
-    (void)list;
-    return -1;
+int slist_has_cycle(const slist_t* list)
+{
+    if (list == NULL) {
+        return ERR;
+    }
+
+#if (1)
+    /* based on fast and slow pointers */
+
+    if (list->size == 1) {
+        /* if there is only one element, tail and head should be the same but the tail->next shouldn't */
+        return (list->head == list->tail->next)? CYCLE_EXISTS : OK;
+    }
+
+    slist_node_t *slow = list->head;
+    slist_node_t *fast = list->head;
+
+    while (fast && fast->next) {
+        slow = slow->next;
+        fast = fast->next->next;
+        if (slow == fast) {
+            return CYCLE_EXISTS;
+        }
+    }
+    return OK;
+#endif // Floyd's
+
+#if (0)
+    /* find the cycle */
+    slist_node_t *curr = list->head;
+    size_t iter = list->size;
+    size_t cycles = 0;
+
+    while (curr) {
+        curr = curr->next;
+        cycles++;
+        if (cycles > iter) {
+            return CYCLE_EXISTS;
+        }
+    }
+    return OK;
+#endif // My implementation
 }

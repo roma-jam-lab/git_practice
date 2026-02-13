@@ -40,6 +40,13 @@ static void expect_invariants_acyclic(const slist_t& list) {
     }
 }
 
+// Helper: build list 1..n
+static void build_1_to_n(slist_t* list, int n) {
+    for (int i = 1; i <= n; ++i) {
+        ASSERT_EQ(slist_push_back(list, i), 0);
+    }
+}
+
 TEST(SListAlgoTest, ReverseEmptyIsOk) {
     slist_t list;
     ASSERT_EQ(slist_init(&list), 0);
@@ -216,6 +223,119 @@ TEST(SListAlgoTest, ReverseOnAcyclicKeepsAcyclic) {
     auto v = to_vec_safe(&list, 3);
     EXPECT_EQ(v, (std::vector<int>{999, 998, 997}));
     expect_invariants_acyclic(list);
+
+    slist_free(&list);
+}
+
+
+TEST(SListCycleTest, CycleExistsEvenIfSizeIsWrongSmaller) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+    build_1_to_n(&list, 5);
+
+    // Create cycle: tail -> head
+    ASSERT_NE(list.tail, nullptr);
+    ASSERT_NE(list.head, nullptr);
+    list.tail->next = list.head;
+
+    // Corrupt size intentionally (simulate buggy size tracking)
+    list.size = 0;
+
+    EXPECT_EQ(slist_has_cycle(&list), 1);
+
+    // break cycle to avoid issues in free
+    list.tail->next = nullptr;
+    slist_free(&list);
+}
+
+TEST(SListCycleTest, CycleExistsEvenIfSizeIsWrongBigger) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+    build_1_to_n(&list, 6);
+
+    // Create cycle: tail -> 3rd node
+    slist_node_t* third = list.head ? list.head->next ? list.head->next->next : nullptr : nullptr;
+    ASSERT_NE(third, nullptr);
+    list.tail->next = third;
+
+    // Corrupt size intentionally (too large)
+    list.size = 1000000;
+
+    EXPECT_EQ(slist_has_cycle(&list), 1);
+
+    // break cycle
+    list.tail->next = nullptr;
+    slist_free(&list);
+}
+
+TEST(SListCycleTest, NoCycleEvenIfSizeIsWrong) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+    build_1_to_n(&list, 4);
+
+    // Corrupt size
+    list.size = 1;
+
+    EXPECT_EQ(slist_has_cycle(&list), 0);
+
+    slist_free(&list);
+}
+
+TEST(SListCycleTest, DetectCycleWithSingleNodeSelfLoop) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+    ASSERT_EQ(slist_push_back(&list, 123), 0);
+
+    ASSERT_NE(list.head, nullptr);
+    ASSERT_NE(list.tail, nullptr);
+    // Create self-cycle
+    list.head->next = list.head;
+
+    EXPECT_EQ(slist_has_cycle(&list), 1);
+
+    // break cycle
+    list.head->next = nullptr;
+    slist_free(&list);
+}
+
+TEST(SListCycleTest, DetectCycleInTwoNodeLoop) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+    ASSERT_EQ(slist_push_back(&list, 1), 0);
+    ASSERT_EQ(slist_push_back(&list, 2), 0);
+
+    // head->next is node2, make node2->next point back to head
+    ASSERT_NE(list.head, nullptr);
+    ASSERT_NE(list.tail, nullptr);
+    list.tail->next = list.head;
+
+    EXPECT_EQ(slist_has_cycle(&list), 1);
+
+    // break cycle
+    list.tail->next = nullptr;
+    slist_free(&list);
+}
+
+TEST(SListCycleTest, DetectCycleDoesNotRelyOnTailPointer) {
+    slist_t list;
+    ASSERT_EQ(slist_init(&list), 0);
+    build_1_to_n(&list, 5);
+
+    // Create a cycle: tail->next = second node
+    slist_node_t* second = list.head ? list.head->next : nullptr;
+    ASSERT_NE(second, nullptr);
+    list.tail->next = second;
+
+    // Corrupt tail pointer (simulate tail tracking bug)
+    list.tail = nullptr;
+
+    EXPECT_EQ(slist_has_cycle(&list), 1);
+
+    // To break cycle we need the real last node; rebuild tail by walking limited steps
+    // (since we know original list had 5 nodes)
+    slist_node_t* cur = list.head;
+    for (int i = 0; i < 4; ++i) cur = cur->next;
+    cur->next = nullptr;
 
     slist_free(&list);
 }
