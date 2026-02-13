@@ -5,3 +5,4 @@ enable_testing()
 
 add_subdirectory(day1_dynamic_array)
 add_subdirectory(day2_string_buffer)
+add_subdirectory(day3_singly_linked_list)
