@@ -16,6 +16,7 @@ target_compile_options(slist PRIVATE -Wall -Wextra -Werror)
 
 add_executable(slist_tests
     tests/slist_test.cpp
+    tests/slist_algorithms_test.cpp
 )
 
 target_link_libraries(slist_tests
