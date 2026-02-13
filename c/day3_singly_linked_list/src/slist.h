@@ -35,4 +35,21 @@ int slist_pop_front(slist_t* list, int* out_value);
  */
 int slist_remove_first(slist_t* list, int value);
 
+/* Reverse the list in-place.
+ * Returns 0 on success, -1 on invalid args.
+ */
+int slist_reverse(slist_t* list);
+
+/* Find the "middle" element.
+ * For odd length: exact middle.
+ * For even length: return the lower middle (e.g., [1,2,3,4] -> 2).
+ * Returns 0 on success (writes to *out_value), -1 on empty list/invalid args.
+ */
+int slist_find_middle(const slist_t* list, int* out_value);
+
+/* Detect if the list contains a cycle.
+ * Returns 1 if cycle exists, 0 if no cycle, -1 on invalid args.
+ */
+int slist_has_cycle(const slist_t* list);
+
 #endif

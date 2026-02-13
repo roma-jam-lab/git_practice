@@ -175,3 +175,21 @@ int slist_remove_first(slist_t* list, int value)
 
     return OK;
 }
+
+int slist_reverse(slist_t* list) {
+    /* TODO */
+    (void)list;
+    return -1;
+}
+
+int slist_find_middle(const slist_t* list, int* out_value) {
+    /* TODO */
+    (void)list; (void)out_value;
+    return -1;
+}
+
+int slist_has_cycle(const slist_t* list) {
+    /* TODO */
+    (void)list;
+    return -1;
+}
