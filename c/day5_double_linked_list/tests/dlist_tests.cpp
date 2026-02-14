@@ -465,6 +465,11 @@ TEST(DListTest, RemoveOnlyElementResetsHeadAndTail) {
     ASSERT_EQ(dlist_init(&list), 0);
 
     ASSERT_EQ(dlist_push_back(&list, 7), 0);
+
+    EXPECT_EQ(list.size, 1u);
+    EXPECT_NE(list.head, nullptr);
+    EXPECT_NE(list.tail, nullptr);
+
     EXPECT_EQ(dlist_remove_first(&list, 7), 1);
 
     EXPECT_EQ(list.size, 0u);
