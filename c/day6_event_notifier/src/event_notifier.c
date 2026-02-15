@@ -35,7 +35,7 @@
 */
 
 /* Implementation:
-* Preserve subscription order -> SLIST
+* Preserve subscription order -> STAILQ
 * Several subscription in order -> SLIST
 * When unsubscribed, remove_first() -> SLIST
 * No requirements for O(1) on subscribe/removal -> SLIST for simplicity sake
@@ -145,11 +145,12 @@ void event_deinitialize(Event* event)
         };
     }
 
-    /* Event node found */
-
-    /* TODO: Unsubscribe all? In lock? Yes.
-    * But there might be an "event removed" callback.
-    */
+    /* Event node found, unsubscribe all */
+    while (!SLIST_EMPTY(&event_node->dynamic.subs_list)) {
+        struct subscriber_s *subscriber_to_free = SLIST_FIRST(&event_node->dynamic.subs_list);
+        SLIST_REMOVE_HEAD(&event_node->dynamic.subs_list, next);
+        free(subscriber_to_free);
+    }
 
     if (event_node) {
         SLIST_REMOVE(&s_events.events_list, event_node, event_node_s, dynamic.next_node);
@@ -248,10 +249,30 @@ bool event_unsubscribe(Event* event, void (*handler)(const Event*, const void*, 
         return true;
     }
 
-    return true;
+    return false;
 }
 
 void event_notify(Event* event, const void* data, size_t length)
 {
     /* Cycle the SLIST, found the node, call the callback */
+    LOCK();
+
+    struct event_node_s *event_node = NULL;
+    struct event_node_s *tmp_node;
+    SLIST_FOREACH(tmp_node, &s_events.events_list, dynamic.next_node) {
+        if (tmp_node->event == event) {
+            /* found the event in the registry */
+            event_node = tmp_node;
+        };
+    }
+
+    UNLOCK();
+
+    /* Notify all subscribers */
+    struct subscriber_s *subscriber_to_notify = NULL;
+    SLIST_FOREACH(subscriber_to_notify, &event_node->dynamic.subs_list, next) {
+        if (subscriber_to_notify->event_cb) {
+            subscriber_to_notify->event_cb(event, data, length);
+        }
+    }
 }
