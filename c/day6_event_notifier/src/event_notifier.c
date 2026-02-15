@@ -50,11 +50,11 @@
  * @brief Subscriber node
  */
 struct subscriber_s {
-    SLIST_ENTRY(subscriber_s) next;
     event_cb_t event_cb;
+    STAILQ_ENTRY(subscriber_s) next;
 };
 
-SLIST_HEAD(subscriber_list_s, subscriber_s);
+STAILQ_HEAD(subscriber_list_s, subscriber_s);
 
 /**
  * @brief Event list node
@@ -63,7 +63,7 @@ struct event_node_s
 {
     struct {
         SLIST_ENTRY(event_node_s) next_node;
-        struct subscriber_list_s subs_list;
+        struct subscriber_list_s subs_tailq;
         size_t subs_num;
     } dynamic;
     Event *event; /* pointer to event */
@@ -91,7 +91,7 @@ static struct event_node_s *event_create_new(Event* event) {
     }
     /* save the params and init subs list */
     new_node->event = event;
-    SLIST_INIT(&new_node->dynamic.subs_list);
+    STAILQ_INIT(&new_node->dynamic.subs_tailq);
     return new_node;
 }
 
@@ -146,17 +146,19 @@ void event_deinitialize(Event* event)
     }
 
     /* Event node found, unsubscribe all */
-    while (!SLIST_EMPTY(&event_node->dynamic.subs_list)) {
-        struct subscriber_s *subscriber_to_free = SLIST_FIRST(&event_node->dynamic.subs_list);
-        SLIST_REMOVE_HEAD(&event_node->dynamic.subs_list, next);
+    while (!STAILQ_EMPTY(&event_node->dynamic.subs_tailq)) {
+        struct subscriber_s* subscriber_to_free = STAILQ_FIRST(&event_node->dynamic.subs_tailq);
+        STAILQ_REMOVE_HEAD(&event_node->dynamic.subs_tailq, next);
+        event_node->dynamic.subs_num--;
         free(subscriber_to_free);
     }
+
+    STAILQ_INIT(&event_node->dynamic.subs_tailq);
 
     if (event_node) {
         SLIST_REMOVE(&s_events.events_list, event_node, event_node_s, dynamic.next_node);
         /* TODO: assert on num == 0 */
         s_events.num--;
-
     }
 
     UNLOCK();
@@ -193,7 +195,7 @@ bool event_subscribe(Event* event, void (*handler)(const Event*, const void*, si
     /* TODO: seek the event + add subscriber in one transaction? */
     LOCK();
 
-    SLIST_INSERT_HEAD(&event_node->dynamic.subs_list, new_subscriber, next);
+    STAILQ_INSERT_TAIL(&event_node->dynamic.subs_tailq, new_subscriber, next);
     event_node->dynamic.subs_num++;
 
     UNLOCK();
@@ -203,6 +205,7 @@ bool event_subscribe(Event* event, void (*handler)(const Event*, const void*, si
 
 bool event_unsubscribe(Event* event, void (*handler)(const Event*, const void*, size_t))
 {
+    bool res;
     /* Cycle the SLIST, found the node, add the subscription_cb */
     LOCK();
 
@@ -226,30 +229,27 @@ bool event_unsubscribe(Event* event, void (*handler)(const Event*, const void*, 
     LOCK();
 
     struct subscriber_s *subscriber_to_free = NULL;
-    struct subscriber_s *tmp_subs;
-    SLIST_FOREACH(tmp_subs, &event_node->dynamic.subs_list, next) {
-        if (tmp_subs->event_cb == handler) {
-            /* found the subscriber in subscribers event list */
-            subscriber_to_free = tmp_subs;
+    struct subscriber_s *tmp = NULL;
+
+    STAILQ_FOREACH(tmp, &event_node->dynamic.subs_tailq, next) {
+        if (tmp->event_cb == handler) {
+            subscriber_to_free = tmp;
             break;
-        };
+        }
     }
 
     if (subscriber_to_free) {
-        SLIST_REMOVE(&event_node->dynamic.subs_list, subscriber_to_free, subscriber_s, next);
-        /* TODO: assert on num == 0 */
+        STAILQ_REMOVE(&event_node->dynamic.subs_tailq, subscriber_to_free, subscriber_s, next);
         event_node->dynamic.subs_num--;
+        free(subscriber_to_free);
+        res = true;
+    } else {
+        res = false;
     }
 
     UNLOCK();
 
-    /* TODO: add flag for print correct message */
-    if (subscriber_to_free) {
-        free(subscriber_to_free);
-        return true;
-    }
-
-    return false;
+    return res;
 }
 
 void event_notify(Event* event, const void* data, size_t length)
@@ -266,13 +266,14 @@ void event_notify(Event* event, const void* data, size_t length)
         };
     }
 
-    UNLOCK();
-
     /* Notify all subscribers */
+
     struct subscriber_s *subscriber_to_notify = NULL;
-    SLIST_FOREACH(subscriber_to_notify, &event_node->dynamic.subs_list, next) {
+    STAILQ_FOREACH(subscriber_to_notify, &event_node->dynamic.subs_tailq, next) {
         if (subscriber_to_notify->event_cb) {
             subscriber_to_notify->event_cb(event, data, length);
         }
     }
+
+    UNLOCK();
 }
